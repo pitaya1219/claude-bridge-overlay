@@ -1,0 +1,54 @@
+name: Update flake inputs
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_dispatch:     # Manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Update flake inputs
+        id: update
+        run: |
+          nix flake update
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update flake inputs and dependencies'
+          title: 'chore: update flake inputs'
+          body: |
+            Automated update of flake inputs and dependencies.
+            
+            This PR updates:
+            - flake.lock with latest upstream commits
+            - npm dependencies managed by dream2nix
+            
+            All inputs are now synchronized with their latest versions.
+          branch: update-flake-inputs
+          delete-branch: true
