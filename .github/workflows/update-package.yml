@@ -1,0 +1,58 @@
+name: Update Package
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight
+  workflow_dispatch:     # Allow manual trigger
+
+jobs:
+  update-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - uses: cachix/install-nix-action@v26
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      
+      - name: Update flake inputs
+        run: |
+          nix flake update claude-bridge-src
+          
+      - name: Get latest commit info
+        id: commit-info
+        run: |
+          # Get the latest commit hash from the updated flake.lock
+          COMMIT_HASH=$(jq -r '.nodes."claude-bridge-src".locked.rev' flake.lock)
+          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          
+      - name: Update npmDepsHash
+        run: |
+          # Try to build and capture the correct hash
+          nix build .#claude-bridge 2>&1 | tee build.log || true
+          
+          # Extract the correct hash from the error message
+          CORRECT_HASH=$(grep -o 'sha256-[A-Za-z0-9+/=]*' build.log | head -1)
+          if [ -n "$CORRECT_HASH" ]; then
+            sed -i "s/npmDepsHash = .*$/npmDepsHash = \"$CORRECT_HASH\";/" flake.nix
+            echo "Updated npmDepsHash to: $CORRECT_HASH"
+          fi
+          
+      - name: Test build
+        run: |
+          nix build .#claude-bridge
+          
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: update claude-bridge to ${{ steps.commit-info.outputs.commit_hash }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi

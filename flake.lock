@@ -1,21 +1,5 @@
 {
   "nodes": {
-    "claude-bridge-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1750367322,
-        "narHash": "sha256-bndQSXTvdG8EZgPKvdS90YdNlqFvLHkGDjOT2ZAkujU=",
-        "owner": "badlogic",
-        "repo": "lemmy",
-        "rev": "9ba296092980d18cd76540381b425763e2a32529",
-        "type": "github"
-      },
-      "original": {
-        "owner": "badlogic",
-        "repo": "lemmy",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -52,7 +36,6 @@
     },
     "root": {
       "inputs": {
-        "claude-bridge-src": "claude-bridge-src",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs"
       }
